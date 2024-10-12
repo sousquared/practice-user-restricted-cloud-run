@@ -1,0 +1,26 @@
+# Terraformの一時ファイルとディレクトリ
+.terraform
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# .tfvarsファイル（機密情報を含む可能性があるため）
+*.tfvars
+*.tfvars.json
+
+# override filesは通常ローカル開発用なので除外
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLIの設定ファイル
+.terraformrc
+terraform.rc
+
+# その他の一般的な除外ファイル
+.DS_Store
+*.log
+*.bak
+*.swp
