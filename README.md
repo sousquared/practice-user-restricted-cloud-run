@@ -1,98 +1,129 @@
 # 概要
+
 Terraform を使用して Google Cloud Run にサンプルコンテナの hello アプリケーションをデプロイするリポジトリ  
 ログインできるユーザーをメールアドレスで制限する。
 
-
 # 構成図
+
 ```mermaid
 graph LR
-    subgraph ロードバランサー
-        LB[HTTP Load Balancer] 
-        CA[Cloud Armor Policy] <-.-> LB
-        LB --> BS[Backend Service]
+    U[ユーザー] --> LB[HTTPS Load Balancer]
+
+    subgraph LoadBalancer [Load Balancer]
+        LB[HTTPS Load Balancer]
+        LB --> |443| HTTPS[HTTPS Proxy]
+        HTTPS --> |SSL| SSL[SSL Certificate]
+        HTTPS --> URL[URL Map]
+        URL --> BS[Backend Service]
+        BS --> |IAP| IAP[Identity-Aware Proxy]
         BS --> NEG[Serverless NEG]
     end
 
-    U[ユーザー] --> LB
-    NEG --> CR[Cloud Run Service]
+    subgraph CloudRun [Cloud Run]
+        NEG --> CR[Cloud Run Service]
+        CR --> |Hello| Container[Hello Container]
+    end
+
+    subgraph DNS_Group [DNS]
+        DNS_Node[Cloud DNS] -.-> LB
+    end
+
+    classDef lb fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef secure fill:#9f9,stroke:#333,stroke-width:2px;
+    class LB,HTTPS,SSL,IAP secure;
 ```
 
+# 変数の設定
 
-# 許可するIPアドレスの設定
+`variables.tf`で以下の変数を環境に合わせて設定する必要があります：
 
-変更が必要な箇所としては、cloud armor policyのsrc_ip_rangesに自宅のグローバルIPを設定することです。
 ```terraform
-# Load Balancerのcloud armor policy
-resource "google_compute_security_policy" "hello_policy" {
-  name        = "inference-policy"
-  description = "Load Balancer用のcloud armor policy"
-  rule {
-    action   = "allow"
-    priority = 1000
-    match {
-      versioned_expr = "SRC_IPS_V1"
-      config {
-        # FIXME: your ip address
-        src_ip_ranges = ["YOUR_IP_ADDRESS"]
-      }
-    }
-    description = "my home global ip address"
-  }
-  rule {
-    action   = "deny(403)"
-    priority = 2147483647
-    match {
-      versioned_expr = "SRC_IPS_V1"
-      config {
-        src_ip_ranges = ["*"]
-      }
-    }
-    description = "default rule"
-  }
-  adaptive_protection_config {
-    layer_7_ddos_defense_config {
-      enable = true
-    }
-  }
+variable "project" {
+  default = "your-project-id"    // GCPプロジェクトIDを設定
+}
+
+variable "project_number" {
+  default = "your-project-number" // GCPプロジェクト番号を設定
+}
+
+variable "domain" {
+  default = "your-domain.com"         // 使用するドメイン名を設定
+}
+
+variable "dns_managed_zone" {
+  default = "your-dns-zone"       // Cloud DNSのゾーン名を設定
+}
+
+variable "iap_members" {
+  default = [
+    "user:example@example.com"    // IAPでアクセスを許可するユーザーのメールアドレスを設定
+    // 複数のユーザーを追加可能
+  ]
 }
 ```
 
-自宅のPCのグローバルIPの調べ方は以下を参照しました。(mac)
-https://qiita.com/rimorimo/items/8052bcfb32ac640a8796
+これらの値は、以下のいずれかの方法で設定できます：
 
-# terraform実行
+1. `variables.tf`のデフォルト値を直接編集
+2. `terraform.tfvars`ファイルを作成して値を設定
+3. 環境変数で設定（例：`TF_VAR_project="your-project-id"`）
+4. `terraform apply`実行時に対話的に入力
+
+# terraform 実行
+
 ```shell
+# ログイン
+gcloud auth application-default login
+
 cd infra
 terraform init
 terraform plan
 terraform apply
 ```
 
-terraform planやterraform applyでvariablesの入力を求められるので、適切に入力します。
+注意：SSL 証明書のプロビジョニングと検証には時間がかかる場合があります（通常 15-30 分程度）。
+証明書のステータスは以下のコマンドで確認できます：
+
 ```shell
-$ terraform plan
-var.project
-  The ID of the project in which resources will be managed.
-
-  Enter a value:
+terraform output certificate_status
 ```
-
-※ロードバランサやCloud Armorの反映に少し時間がかかることがあります。
 
 # アクセス
-作成されたIPにアクセスします。
+
+以下のコマンドで、デプロイされた環境の情報を確認できます：
+
 ```shell
 $ terraform output
-load_balancer_ip = {IP_ADDRESS}
+certificate_status = {
+  "create_time" = "2021-09-01T00:00:00.000-07:00"
+  "expire_time" = "2021-12-01T00:00:00.000-07:00"
+  "id" = "your-certificate-id"
+}
+domain = "your-domain.com"
+lb_ip = "xxx.xxx.xxx.xxx"
+url = "https://your-domain.com"
 ```
 
-http://{IP_ADDRESS} にアクセス
+アプリケーションには `url` で表示された URL からアクセスできます。
+なお、以下の点に注意してください：
 
-以下の画面が出てきたら成功です！
+- DNS の伝播に時間がかかる場合があります（通常 5-30 分程度）
+- SSL 証明書の検証が完了するまで HTTPS アクセスができません
+- 証明書のステータスは `terraform output certificate_status` で確認できます
+
+Google のサインイン画面が表示されるので, 許可されたメールアドレスでサインインしてください.
+![sign-in](sign-in.png)
+
+ログイン画面で次へをクリックします.
+![login](login.png)
+
+以下の画面が表示されたら成功です！
 ![success](success.png)
 
 # クリーンアップ
-Terraformで作成したリソースをすべて削除して、環境をクリーンな状態に戻すには、以下のコマンドを実行します。
+
+Terraform で作成したリソースをすべて削除して、環境をクリーンな状態に戻すには、以下のコマンドを実行します。
+
 ```shell
 terraform destroy
 ```
