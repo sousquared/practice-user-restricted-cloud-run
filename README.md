@@ -133,13 +133,13 @@ url = "https://your-domain.com"
 - 証明書のステータスは `terraform output certificate_status` で確認できます
 
 Google のサインイン画面が表示されるので, 許可されたメールアドレスでサインインしてください.
-![sign-in](sign-in.png)
+![sign-in](images/sign-in.png)
 
 ログイン画面で次へをクリックします.
-![login](login.png)
+![login](images/login.png)
 
 以下の画面が表示されたら成功です！
-![success](success.png)
+![success](images/success.png)
 
 # クリーンアップ
 
