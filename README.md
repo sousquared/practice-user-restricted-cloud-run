@@ -47,16 +47,16 @@ variable "project_number" {
 }
 
 variable "domain" {
-  default = "your-domain.com"         // 使用するドメイン名を設定
+  default = "your-domain.com"    // 使用するドメイン名を設定
 }
 
 variable "dns_managed_zone" {
-  default = "your-dns-zone"       // Cloud DNSのゾーン名を設定
+  default = "your-dns-zone"      // Cloud DNSのゾーン名を設定
 }
 
 variable "iap_members" {
   default = [
-    "user:example@example.com"    // IAPでアクセスを許可するユーザーのメールアドレスを設定
+    "user:example@example.com"   // IAPでアクセスを許可するユーザーのメールアドレスを設定
     // 複数のユーザーを追加可能
   ]
 }
@@ -68,6 +68,27 @@ variable "iap_members" {
 2. `terraform.tfvars`ファイルを作成して値を設定
 3. 環境変数で設定（例：`TF_VAR_project="your-project-id"`）
 4. `terraform apply`実行時に対話的に入力
+
+## terraform.tfvarsのサンプル
+
+```terraform
+# GCPプロジェクトの設定
+project        = "your-project-id"        # プロジェクトID
+project_number = "your-project-number"    # プロジェクト番号
+region         = "asia-northeast1"        # リージョン
+
+# ドメインとDNSの設定
+domain           = "your-domain.com"      # 使用するドメイン
+dns_managed_zone = "your-dns-zone"        # Cloud DNSのゾーン名
+
+# IAPアクセス許可メンバー
+iap_members = [
+  "user:example@example.com",
+  # 必要に応じて他のメンバーを追加
+  # "user:another@example.com",
+  # "group:team@example.com",
+]
+```
 
 # terraform 実行
 
