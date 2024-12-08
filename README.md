@@ -3,6 +3,8 @@
 Terraform を使用して Google Cloud Run にサンプルコンテナの hello アプリケーションをデプロイするリポジトリ  
 ログインできるユーザーをメールアドレスで制限する。
 
+zenn記事: https://zenn.dev/sousquared/articles/b8bdb499822159
+
 # 構成図
 
 ```mermaid
